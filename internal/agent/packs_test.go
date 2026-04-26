@@ -4,8 +4,8 @@ import "testing"
 
 func TestPacksRegistered(t *testing.T) {
 	packs := ListLegacyPacks()
-	if len(packs) != 5 {
-		t.Fatalf("expected 5 packs, got %d", len(packs))
+	if len(packs) != 6 {
+		t.Fatalf("expected 6 packs, got %d", len(packs))
 	}
 	founding := LookupLegacyPack("founding-team")
 	if founding == nil {
