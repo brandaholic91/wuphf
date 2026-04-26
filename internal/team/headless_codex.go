@@ -49,6 +49,8 @@ func defaultHeadlessCodexRunTurn(l *Launcher, ctx context.Context, slug, notific
 		switch {
 		case kind == provider.KindCodex:
 			return l.runHeadlessCodexTurn(ctx, slug, notification, channel...)
+		case kind == provider.KindHermes:
+			return l.runHeadlessHermesTurn(ctx, slug, notification, channel...)
 		case kind == provider.KindOpencode:
 			return l.runHeadlessOpencodeTurn(ctx, slug, notification, channel...)
 		case isOpenAICompatKind(kind):
