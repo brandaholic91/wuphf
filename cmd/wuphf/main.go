@@ -131,7 +131,7 @@ func main() {
 	blueprintFlag := flag.String("blueprint", "", "Operation blueprint ID for this run")
 	packFlag := flag.String("pack", "", "Operation blueprint ID (legacy pack alias supported)")
 	fromScratchFlag := flag.Bool("from-scratch", false, "Start without a saved blueprint and synthesize the first operation from the directive")
-	providerFlag := flag.String("provider", "", "LLM provider override for this run (claude-code, codex, opencode)")
+	providerFlag := flag.String("provider", "", "LLM provider override for this run (claude-code, codex, opencode, hermes)")
 	oneOnOne := flag.Bool("1o1", false, "Launch a direct 1:1 session with a single agent (default ceo)")
 	channelView := flag.Bool("channel-view", false, "Run as channel view (internal)")
 	channelApp := flag.String("channel-app", "", "Start channel view on a specific app (internal)")
