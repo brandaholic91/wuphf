@@ -135,6 +135,31 @@ git tag v0.1.0
 goreleaser release --clean
 ```
 
+## 6. Hermes Agent provider
+
+A `hermes-provider` branch hozzáadja a Hermes Agentet mint WUPHF agent runner providert.
+Így indítható:
+
+```bash
+wuphf --provider hermes --pack marketing-agency --web-port 7891
+```
+
+**Előfeltételek:**
+- `pip install hermes-agent && hermes setup`
+- `hermes model` → válaszd az OpenCode Go (`opencode-go`) vagy OpenRouter providert
+- Első indítás után a marketing-agency csapat (director, content-lead, copywriter,
+  social-manager, seo-analyst, paid-specialist) Hermes `-z` oneshot módban fut
+
+**Módosított fájlok:**
+| Fájl | Változtatás |
+|---|---|
+| `internal/provider/binding.go` | `KindHermes = "hermes"` konstans + `ValidateKind()` |
+| `internal/provider/hermes.go` | Provider regisztrálás, `RunHermesOneShot`, `CreateHermesCLIStreamFn` |
+| `internal/team/headless_hermes.go` | `runHeadlessHermesTurn` implementáció |
+| `internal/team/headless_codex.go` | KindHermes dispatch case |
+| `internal/agent/packs.go` | `marketing-agency` pack |
+| `cmd/wuphf/main.go` | `hermes` a `--provider` help szövegben |
+
 ## What's intentionally hard to change
 
 - **Broker push model.** It's the architectural spine. Replacing it means rewriting the project.
