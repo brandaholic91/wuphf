@@ -4,18 +4,20 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/nex-crm/wuphf/internal/provider"
+	"github.com/nex-crm/wuphf/internal/runtimebin"
 )
 
 // Hermes-specific test hooks, kept separate from Codex/Opencode hooks so test
 // setups can stub one runtime without colliding with the others.
 var (
-	headlessHermesLookPath       = exec.LookPath
+	headlessHermesLookPath       = runtimebin.LookPath
 	headlessHermesCommandContext = exec.CommandContext
 )
 
@@ -68,6 +70,19 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 		return err
 	}
 
+	// C2: watch for context cancellation and terminate the child process so
+	// the scanner goroutine is not blocked on a pipe that will never close.
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			terminateHeadlessProcess(cmd)
+			_ = stdout.Close()
+		case <-done:
+		}
+	}()
+
 	var agentStream *agentStreamBuffer
 	if l.broker != nil {
 		agentStream = l.broker.AgentStream(slug)
@@ -82,6 +97,14 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 		if agentStream != nil && strings.TrimSpace(line) != "" {
 			b, _ := json.Marshal(line)
 			agentStream.Push(`{"type":"text","content":` + string(b) + `}`)
+		}
+	}
+
+	// C1: if the scanner hit a >4 MiB line the pipe is full and cmd.Wait()
+	// would deadlock; kill the child first so Wait returns promptly.
+	if scanErr := scanner.Err(); scanErr != nil {
+		if errors.Is(scanErr, bufio.ErrTooLong) {
+			terminateHeadlessProcess(cmd)
 		}
 	}
 

@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/nex-crm/wuphf/internal/agent"
+	"github.com/nex-crm/wuphf/internal/runtimebin"
 )
 
 var (
-	hermesLookPath = exec.LookPath
+	hermesLookPath = runtimebin.LookPath
 	hermesCommand  = exec.Command
 	hermesGetwd    = os.Getwd
 )
@@ -197,11 +199,11 @@ func appendHermesLatencyLog(agentSlug string, line string) {
 	if err != nil {
 		return
 	}
-	logDir := fmt.Sprintf("%s/.wuphf/logs", home)
+	logDir := filepath.Join(home, ".wuphf", "logs")
 	if err := os.MkdirAll(logDir, 0o700); err != nil {
 		return
 	}
-	path := fmt.Sprintf("%s/hermes-latency.log", logDir)
+	path := filepath.Join(logDir, "hermes-latency.log")
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return
