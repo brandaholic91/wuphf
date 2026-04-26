@@ -10,6 +10,7 @@ const (
 	KindCodex      = "codex"
 	KindOpencode   = "opencode"
 	KindOpenclaw   = "openclaw"
+	KindHermes     = "hermes"
 	// Local OpenAI-compatible HTTP runtimes. All three expose the same
 	// /v1/chat/completions API; only their default base URL and model differ.
 	// Configure per-kind overrides via Config.ProviderEndpoints or
@@ -46,11 +47,12 @@ func ValidateKind(s string) error {
 	switch s {
 	case "",
 		KindClaudeCode, KindCodex, KindOpencode, KindOpenclaw,
+		KindHermes,
 		KindMLXLM, KindOllama, KindExo:
 		return nil
 	default:
-		return fmt.Errorf("unknown provider kind %q (valid: %s, %s, %s, %s, %s, %s, %s, or empty)",
-			s, KindClaudeCode, KindCodex, KindOpencode, KindOpenclaw, KindMLXLM, KindOllama, KindExo)
+		return fmt.Errorf("unknown provider kind %q (valid: %s, %s, %s, %s, %s, %s, %s, %s, or empty)",
+			s, KindClaudeCode, KindCodex, KindOpencode, KindOpenclaw, KindHermes, KindMLXLM, KindOllama, KindExo)
 	}
 }
 
