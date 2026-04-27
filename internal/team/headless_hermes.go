@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -55,6 +56,25 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 	// tag the provider so WUPHF telemetry can distinguish the runner.
 	env := l.buildHeadlessCodexEnv(slug, workspaceDir, firstNonEmpty(channel...))
 	env = setEnvValue(env, "WUPHF_HEADLESS_PROVIDER", "hermes")
+
+	// Hermes reads its config and model credentials from the real user home
+	// (~/.hermes/config.yaml, ~/.hermes/hermes-agent/). The Codex env builder
+	// overrides HOME to an isolated sandbox — restore it so Hermes can find
+	// its own config and API keys.
+	if realHome, err := os.UserHomeDir(); err == nil && realHome != "" {
+		env = setEnvValue(env, "HOME", realHome)
+	}
+	// Pass Hermes/OpenCode-Go credentials from the parent process environment
+	// so the hermes subprocess can authenticate with the LLM provider.
+	for _, key := range []string{
+		"OPENCODE_GO_API_KEY",
+		"OPENROUTER_API_KEY",
+		"HERMES_PROVIDER_MODE",
+	} {
+		if val := os.Getenv(key); val != "" {
+			env = setEnvValue(env, key, val)
+		}
+	}
 	cmd.Env = env
 
 	stdout, err := cmd.StdoutPipe()
