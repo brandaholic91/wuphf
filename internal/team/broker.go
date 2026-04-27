@@ -2395,7 +2395,7 @@ func (b *Broker) ServeWebUI(port int) {
 	// Chrome's heuristic cache revalidates HTML only occasionally.
 	mux.Handle("/", cacheControlMiddleware(fileServer))
 	go func() {
-		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), mux); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", port), mux); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("broker web UI proxy: listen on :%d: %v", port, err)
 		}
 	}()
