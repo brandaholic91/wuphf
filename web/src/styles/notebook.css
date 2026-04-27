@@ -317,6 +317,18 @@
 }
 
 /* ── Article column ──────────────────────────────────────────── */
+/* When nb-article is a direct child of nb-layout it must scroll
+   independently — the grid parent has overflow:hidden so without
+   this the content is clipped and the user cannot scroll long entries. */
+.notebook-surface .nb-layout > .nb-article {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
 .notebook-surface .nb-article {
   padding: 32px 72px 48px;
   max-width: var(--nb-article-max);
