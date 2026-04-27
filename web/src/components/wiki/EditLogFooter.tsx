@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import {
-  MOCK_EDIT_LOG,
   subscribeEditLog,
   type WikiEditLogEntry,
 } from "../../api/wiki";
@@ -23,7 +22,7 @@ export default function EditLogFooter({
   onNavigate,
 }: EditLogFooterProps) {
   const [entries, setEntries] = useState<WikiEditLogEntry[]>(
-    initialEntries ?? MOCK_EDIT_LOG,
+    initialEntries ?? [],
   );
 
   useEffect(() => {
