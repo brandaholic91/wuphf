@@ -1,5 +1,8 @@
 # Go binary
 /wuphf
+
+# npm
+web/package-lock.json
 /nex
 /bridge
 /wuphf-oc-probe
