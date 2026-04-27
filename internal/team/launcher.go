@@ -4688,6 +4688,12 @@ func (l *Launcher) PreflightWeb() error {
 		}
 		return nil
 	}
+	if l.provider == provider.KindHermes {
+		if _, err := runtimebin.LookPath("hermes"); err != nil {
+			return fmt.Errorf("hermes not found in PATH. Install Hermes Agent first")
+		}
+		return nil
+	}
 	if l.usesCodexRuntime() {
 		if l.usesOpencodeRuntime() {
 			if _, err := runtimebin.LookPath("opencode"); err != nil {
