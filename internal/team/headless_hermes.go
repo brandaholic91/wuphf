@@ -168,10 +168,12 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 	env = setEnvValue(env, "OPENAI_BASE_URL", "https://opencode.ai/zen/go/v1")
 	// Expose WUPHF broker credentials so the wuphf mcp-team MCP server
 	// (configured in ~/.hermes/config.yaml) can authenticate with the broker.
+	// WUPHF_MEMORY_BACKEND activates the team_wiki_write MCP tool when set to "markdown".
 	if l.broker != nil {
 		env = setEnvValue(env, "WUPHF_BROKER_TOKEN", l.broker.Token())
 		env = setEnvValue(env, "WUPHF_BROKER_BASE_URL", l.BrokerBaseURL())
 	}
+	env = setEnvValue(env, "WUPHF_MEMORY_BACKEND", "markdown")
 	cmd.Env = env
 
 	stdout, err := cmd.StdoutPipe()
