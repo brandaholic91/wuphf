@@ -83,15 +83,17 @@ export function Sidebar() {
             <AgentList />
           </div>
 
-          <div className="sidebar-section">
-            <p className="sidebar-section-title">Channels</p>
-          </div>
-          <ChannelList />
+          <div style={{ flex: "1 1 auto", overflowY: "auto", minHeight: 0 }}>
+            <div className="sidebar-section">
+              <p className="sidebar-section-title">Channels</p>
+            </div>
+            <ChannelList />
 
-          <div className="sidebar-section">
-            <p className="sidebar-section-title">Apps</p>
+            <div className="sidebar-section">
+              <p className="sidebar-section-title">Apps</p>
+            </div>
+            <AppList />
           </div>
-          <AppList />
 
           <WorkspaceSummary />
           <UsagePanel />
