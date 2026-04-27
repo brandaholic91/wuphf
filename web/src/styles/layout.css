@@ -785,11 +785,12 @@ html[data-theme="nex"]
   overflow: hidden;
 }
 .sidebar-scroll-wrap.is-channels {
-  flex: 0 0 auto;
-  max-height: 200px;
+  flex: 1 1 auto;
+  min-height: 80px;
 }
 .sidebar-scroll-wrap.is-apps {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  max-height: 220px;
 }
 .sidebar-scroll-wrap::after {
   content: "";
