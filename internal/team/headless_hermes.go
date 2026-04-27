@@ -2,13 +2,17 @@ package team
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +20,42 @@ import (
 	"github.com/nex-crm/wuphf/internal/provider"
 	"github.com/nex-crm/wuphf/internal/runtimebin"
 )
+
+// taskIDRe extracts task IDs like [task-82] from notification text.
+var taskIDRe = regexp.MustCompile(`\[task-(\d+)\]`)
+
+// extractTaskID returns the first task ID found in the notification, or "".
+func extractTaskID(notification string) string {
+	m := taskIDRe.FindStringSubmatch(notification)
+	if len(m) < 2 {
+		return ""
+	}
+	return "task-" + m[1]
+}
+
+// brokerTaskAction calls the WUPHF broker task API with the given action.
+// It is a best-effort call — errors are logged but never fatal.
+func brokerTaskAction(brokerURL, token, taskID, action, owner string) {
+	if brokerURL == "" || token == "" || taskID == "" {
+		return
+	}
+	body := map[string]string{"action": action, "id": taskID}
+	if owner != "" {
+		body["owner"] = owner
+	}
+	data, _ := json.Marshal(body)
+	req, err := http.NewRequest(http.MethodPost, brokerURL+"/tasks", bytes.NewReader(data))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err == nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}
+}
 
 // hermesSessionStore persists the last Hermes session ID per agent slug so
 // subsequent turns can resume the conversation with --resume <id>.
@@ -120,6 +160,19 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 	workspaceDir = normalizeHeadlessWorkspaceDir(workspaceDir)
 	if workspaceDir == "" {
 		workspaceDir = "."
+	}
+
+	// Claim the active task via the broker so the Tasks UI shows in_progress
+	// without the agent needing to burn an LLM call on a team_task tool call.
+	brokerURL := l.BrokerBaseURL()
+	brokerToken := ""
+	if l.broker != nil {
+		brokerToken = l.broker.Token()
+	}
+	activeTaskID := extractTaskID(notification)
+	if activeTaskID != "" {
+		brokerTaskAction(brokerURL, brokerToken, activeTaskID, "claim", slug)
+		appendHeadlessCodexLog(slug, "hermes_task_claim: "+activeTaskID)
 	}
 
 	systemPrompt := l.buildPrompt(slug)
@@ -230,6 +283,11 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 	if err := cmd.Wait(); err != nil {
 		stderr := strings.TrimSpace(stderrBuf.String())
 		appendHeadlessCodexLog(slug, "hermes_stderr: "+stderr)
+		// Mark task blocked so the UI reflects the failure.
+		if activeTaskID != "" {
+			brokerTaskAction(brokerURL, brokerToken, activeTaskID, "block", "")
+			appendHeadlessCodexLog(slug, "hermes_task_block: "+activeTaskID)
+		}
 		return fmt.Errorf("hermes: %s: %w", stderr, err)
 	}
 
@@ -241,6 +299,12 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 
 	response := strings.Join(lines, "\n")
 	text := strings.TrimSpace(response)
+	// Mark task complete via broker so the Tasks UI stays accurate without
+	// requiring the agent to spend an LLM call on team_task(action=complete).
+	if activeTaskID != "" && text != "" {
+		brokerTaskAction(brokerURL, brokerToken, activeTaskID, "complete", "")
+		appendHeadlessCodexLog(slug, "hermes_task_complete: "+activeTaskID)
+	}
 	if text != "" {
 		appendHeadlessCodexLog(slug, "hermes_result: "+text)
 		target := firstNonEmpty(channel...)
