@@ -206,6 +206,7 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 		"OPENCODE_GO_BASE_URL",
 		"OPENROUTER_API_KEY",
 		"HERMES_PROVIDER_MODE",
+		"TAVILY_API_KEY",
 	} {
 		if val := os.Getenv(key); val != "" {
 			env = setEnvValue(env, key, val)
