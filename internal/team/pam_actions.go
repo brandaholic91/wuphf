@@ -21,6 +21,11 @@ const (
 	// PamActionEnrichArticle: pull fresh info + media from the web and fold it
 	// into the article body. First action shipped — v1 of Pam's desk menu.
 	PamActionEnrichArticle PamActionID = "enrich_article"
+
+	// PamActionSeoEnrich: SEO analyst enrichment — keyword research, community
+	// evidence from Reddit/HackerNews, competitor gap analysis. Adds an SEO
+	// Insights section to the article using free data sources.
+	PamActionSeoEnrich PamActionID = "seo_enrich"
 )
 
 // PamAction describes a single job Pam can run. The prompt template is a
@@ -62,6 +67,26 @@ var pamActions = []PamAction{
 Use web search and web fetch to find new, reliable information and relevant media for this article. Update the body with what you find. Output the full updated markdown.`,
 		AllowedTools:  []string{"WebSearch", "WebFetch", "Read"},
 		CommitMsgTmpl: "archivist: enrich %s with web data",
+	},
+	{
+		ID:    PamActionSeoEnrich,
+		Label: "Add SEO insights (keywords, community evidence)",
+		SystemPrompt: `You are the SEO Analyst for the Stackly AI marketing agency. Your job is to enrich a wiki article with SEO keyword research, community evidence, and competitor gap analysis using free data sources. Rules you MUST follow:
+1. Preserve the existing frontmatter (the leading --- block) exactly. Do not modify it.
+2. Do not rewrite existing content — only ADD a new "## SEO Insights" section at the end of the article body, before any existing footer.
+3. Use web search and web fetch to check: Google Trends for the topic, Reddit (r/SaaS, r/startups, r/ProductManagement) for community discussions, HackerNews (hn.algolia.com/api/v1/search) for tech community threads, and competitor blogs (Databox, Geckoboard, Klipfolio) for content gaps.
+4. The SEO Insights section must include: primary keyword opportunities (with intent type), 3-5 community quotes showing real pain points, and one competitor gap Stackly can own.
+5. Every claim must cite its source as a markdown link. No invented data.
+6. Output ONLY the full updated markdown. No commentary, no code fences.`,
+		UserPromptTmpl: `# Existing article
+
+%s
+
+# Your task
+
+Research the topic of this article using web search and web fetch: check Google Trends for keyword opportunities, Reddit (r/SaaS, r/startups, r/ProductManagement) for community pain points, HackerNews (hn.algolia.com) for tech community threads, and competitor blogs (Databox, Geckoboard, Klipfolio) for content gaps. Then add a "## SEO Insights" section at the end of the article with keyword opportunities, community evidence (with quotes), and one competitor gap Stackly can own. Output the full updated markdown.`,
+		AllowedTools:  []string{"WebSearch", "WebFetch", "Read"},
+		CommitMsgTmpl: "seo-analyst: add SEO insights to %s",
 	},
 }
 
