@@ -68,6 +68,7 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 	// so the hermes subprocess can authenticate with the LLM provider.
 	for _, key := range []string{
 		"OPENCODE_GO_API_KEY",
+		"OPENCODE_GO_BASE_URL",
 		"OPENROUTER_API_KEY",
 		"HERMES_PROVIDER_MODE",
 	} {
@@ -75,6 +76,14 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 			env = setEnvValue(env, key, val)
 		}
 	}
+	// Use the "main" provider path: map OpenCode Go credentials to the
+	// standard OPENAI_BASE_URL + OPENAI_API_KEY pair that Hermes's "main"
+	// provider reads. This bypasses the aggregator routing logic that
+	// otherwise falls back to OpenRouter for opencode-go.
+	if val := os.Getenv("OPENCODE_GO_API_KEY"); val != "" {
+		env = setEnvValue(env, "OPENAI_API_KEY", val)
+	}
+	env = setEnvValue(env, "OPENAI_BASE_URL", "https://opencode.ai/zen/go/v1")
 	cmd.Env = env
 
 	stdout, err := cmd.StdoutPipe()
