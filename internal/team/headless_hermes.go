@@ -8,12 +8,91 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nex-crm/wuphf/internal/provider"
 	"github.com/nex-crm/wuphf/internal/runtimebin"
 )
+
+// hermesSessionStore persists the last Hermes session ID per agent slug so
+// subsequent turns can resume the conversation with --resume <id>.
+var (
+	hermesSessionMu    sync.Mutex
+	hermesSessionCache = map[string]string{} // slug → session_id
+)
+
+// hermesSessionPath returns the path to the per-slug session ID file.
+func hermesSessionPath(slug string) string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".wuphf", "hermes-sessions", slug+".session")
+}
+
+// loadHermesSessionID reads the stored session ID for slug, or "" if none.
+func loadHermesSessionID(slug string) string {
+	hermesSessionMu.Lock()
+	defer hermesSessionMu.Unlock()
+	if id, ok := hermesSessionCache[slug]; ok {
+		return id
+	}
+	data, err := os.ReadFile(hermesSessionPath(slug))
+	if err != nil {
+		return ""
+	}
+	id := strings.TrimSpace(string(data))
+	hermesSessionCache[slug] = id
+	return id
+}
+
+// saveHermesSessionID persists the session ID for slug.
+func saveHermesSessionID(slug, sessionID string) {
+	if sessionID == "" {
+		return
+	}
+	hermesSessionMu.Lock()
+	defer hermesSessionMu.Unlock()
+	hermesSessionCache[slug] = sessionID
+	dir := filepath.Dir(hermesSessionPath(slug))
+	_ = os.MkdirAll(dir, 0o700)
+	_ = os.WriteFile(hermesSessionPath(slug), []byte(sessionID), 0o600)
+}
+
+// latestHermesSessionID finds the session file created after startedAt and
+// returns its session_id field. Returns "" if nothing new is found.
+func latestHermesSessionID(startedAt time.Time) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	sessionsDir := filepath.Join(home, ".hermes", "sessions")
+	entries, err := os.ReadDir(sessionsDir)
+	if err != nil {
+		return ""
+	}
+	for i := len(entries) - 1; i >= 0; i-- {
+		e := entries[i]
+		if !strings.HasPrefix(e.Name(), "session_") || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil || info.ModTime().Before(startedAt) {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(sessionsDir, e.Name()))
+		if err != nil {
+			continue
+		}
+		var s struct {
+			SessionID string `json:"session_id"`
+		}
+		if err := json.Unmarshal(data, &s); err == nil && s.SessionID != "" {
+			return s.SessionID
+		}
+	}
+	return ""
+}
 
 // Hermes-specific test hooks, kept separate from Codex/Opencode hooks so test
 // setups can stub one runtime without colliding with the others.
@@ -47,6 +126,9 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 	fullPrompt := provider.BuildHermesPromptExported(systemPrompt, notification)
 
 	args := []string{"-z", fullPrompt}
+	if sessionID := loadHermesSessionID(slug); sessionID != "" {
+		args = append(args, "--resume", sessionID)
+	}
 
 	cmd := headlessHermesCommandContext(ctx, "hermes", args...)
 	cmd.Dir = workspaceDir
@@ -94,7 +176,7 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 	var stderrBuf strings.Builder
 	cmd.Stderr = &stderrBuf
 
-	startedAt := time.Now()
+	hermesStartedAt := time.Now()
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -143,12 +225,18 @@ func (l *Launcher) runHeadlessHermesTurn(ctx context.Context, slug string, notif
 		return fmt.Errorf("hermes: %s: %w", stderr, err)
 	}
 
+	// Persist the session ID so the next turn can resume with --resume.
+	if newSessionID := latestHermesSessionID(hermesStartedAt); newSessionID != "" {
+		saveHermesSessionID(slug, newSessionID)
+		appendHeadlessCodexLog(slug, "hermes_session: "+newSessionID)
+	}
+
 	response := strings.Join(lines, "\n")
 	text := strings.TrimSpace(response)
 	if text != "" {
 		appendHeadlessCodexLog(slug, "hermes_result: "+text)
 		target := firstNonEmpty(channel...)
-		msg, posted, err := l.postHeadlessFinalMessageIfSilent(slug, target, notification, text, startedAt)
+		msg, posted, err := l.postHeadlessFinalMessageIfSilent(slug, target, notification, text, hermesStartedAt)
 		if err != nil {
 			appendHeadlessCodexLog(slug, "hermes_fallback-post-error: "+err.Error())
 		} else if posted {
