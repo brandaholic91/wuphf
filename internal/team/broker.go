@@ -2027,18 +2027,48 @@ func hostHeaderIsLoopback(r *http.Request) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
+// isPrivateLANRemote reports whether r.RemoteAddr is an RFC-1918 private
+// address. Used to allow reverse-proxy access from trusted LAN networks.
+func isPrivateLANRemote(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	private := []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}
+	for _, cidr := range private {
+		_, block, _ := net.ParseCIDR(cidr)
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 // webUIRebindGuard wraps a handler with a DNS-rebinding / cross-origin gate.
 // It rejects any request whose RemoteAddr is not loopback or whose Host header
 // is not a recognized localhost form. Applied on the web UI mux because that
 // mux auto-attaches the broker's Bearer token on forwarded requests; without
 // this gate, a malicious website can use DNS rebinding to ride the token.
+// Requests from private LAN addresses (RFC-1918) are also allowed to support
+// reverse-proxy setups within trusted home lab networks.
 func webUIRebindGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isLoopbackRemote(r) || !hostHeaderIsLoopback(r) {
-			http.Error(w, "forbidden", http.StatusForbidden)
+		if isLoopbackRemote(r) && hostHeaderIsLoopback(r) {
+			next.ServeHTTP(w, r)
 			return
 		}
-		next.ServeHTTP(w, r)
+		if isPrivateLANRemote(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		http.Error(w, "forbidden", http.StatusForbidden)
 	})
 }
 
