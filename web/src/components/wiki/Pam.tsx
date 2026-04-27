@@ -238,11 +238,11 @@ export default function Pam({ articlePath, onActionDone }: PamProps) {
         data-busy={busy ? "true" : "false"}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
-        aria-label="Pam the Archivist"
-        title="Pam — click for options"
+        aria-label="SEO Analyst"
+        title="SEO Analyst — click for options"
         onClick={() => setMenuOpen((v) => !v)}
       >
-        <PixelAvatar slug="pam" size={56} className="pam-avatar" />
+        <PixelAvatar slug="seo-analyst" size={56} className="pam-avatar" />
       </button>
       <div className="pam-desk" aria-hidden="true" />
 
@@ -251,20 +251,20 @@ export default function Pam({ articlePath, onActionDone }: PamProps) {
           ref={menuElRef}
           className="pam-menu"
           role="menu"
-          aria-label="Pam's actions"
+          aria-label="SEO Analyst actions"
           onKeyDown={onMenuKeyDown}
         >
-          <div className="pam-menu-header">Pam can help with</div>
+          <div className="pam-menu-header">SEO Analyst can help with</div>
           {menu === null ? (
             <div className="pam-menu-empty">Loading…</div>
           ) : loadError ? (
             <div className="pam-menu-empty" role="alert">
-              Could not load Pam’s menu.
+              Could not load actions.
             </div>
           ) : menu.length === 0 ? (
             <div className="pam-menu-empty">No actions available.</div>
           ) : !articlePath ? (
-            <div className="pam-menu-empty">Open an article to use Pam.</div>
+            <div className="pam-menu-empty">Open an article to use the SEO Analyst.</div>
           ) : (
             menu.map((entry) => (
               <button
