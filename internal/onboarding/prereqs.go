@@ -45,6 +45,7 @@ var prereqSpecs = map[string]prereqSpec{
 	"opencode": {required: false, installURL: "https://opencode.ai"},
 	"cursor":   {required: false, installURL: "https://cursor.com/"},
 	"windsurf": {required: false, installURL: "https://codeium.com/windsurf"},
+	"hermes":   {required: false, installURL: "https://github.com/NousResearch/hermes-agent"},
 }
 
 // CheckAll returns a PrereqResult for each tracked binary in a stable order:
@@ -60,7 +61,7 @@ var prereqSpecs = map[string]prereqSpec{
 // budget. Concurrent probes cap wall-clock at max(probe), well under the
 // client timeout. Order of `names` is preserved in the returned slice.
 func CheckAll() []PrereqResult {
-	names := []string{"node", "git", "claude", "codex", "opencode", "cursor", "windsurf"}
+	names := []string{"node", "git", "claude", "codex", "opencode", "cursor", "windsurf", "hermes"}
 	results := make([]PrereqResult, len(names))
 	var wg sync.WaitGroup
 	wg.Add(len(names))
