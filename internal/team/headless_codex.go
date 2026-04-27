@@ -74,7 +74,7 @@ func headlessCodexRunTurn(l *Launcher, ctx context.Context, slug, notification s
 }
 
 var (
-	headlessCodexTurnTimeout              = 4 * time.Minute
+	headlessCodexTurnTimeout              = 10 * time.Minute
 	headlessCodexOfficeLaunchTurnTimeout  = 10 * time.Minute
 	headlessCodexLocalWorktreeTurnTimeout = 12 * time.Minute
 	headlessCodexStaleCancelAfter         = 90 * time.Second
